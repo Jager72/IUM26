@@ -1,6 +1,0 @@
-pandas==2.2.3
-kagglehub==0.3.7
-numpy
-sklearn
-seaborn
-matplotlib
