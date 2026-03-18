@@ -79,8 +79,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--cut-off", type=int, default=None, help="Limit number of records")
 args = parser.parse_args()
-if args.cutoff is not None:
-    result = result.head(args.cutoff)
+if args.cut_off is not None:
+    result = result.head(args.cut_off)
 
 train, test = train_test_split(result, test_size=0.2, random_state=67)
 test, eval = train_test_split(test, test_size=0.5, random_state=67)
