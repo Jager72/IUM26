@@ -22,10 +22,7 @@ pipeline {
 
         stage('Run Script') {
             steps {
-                withCredentials([string(credentialsId: 'KAGGLE_ENV', variable: 'KAGGLE_API_TOKEN')]) {
-                    sh 'env | grep KAGGLE || true'
-                    sh '$HOME/.local/bin/uv run python main.py'
-                }
+                    sh '$HOME/.local/bin/uv run python src/prepareData.py'
             }
         }
     }
