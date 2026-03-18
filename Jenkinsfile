@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    
+    parameters {
+        string(name: 'CUT_OFF', defaultValue: '', description: 'Limit dataset size')
+    }
 
     stages {
         stage('Checkout') {
@@ -22,7 +26,15 @@ pipeline {
 
         stage('Run Script') {
             steps {
-                    sh '$HOME/.local/bin/uv run python src/prepareData.py'
+                script {
+                    def cmd = "$HOME/.local/bin/uv run python src/prepareData.py"
+
+                    if (params.CUT_OFF?.trim()) {
+                            cmd += " --cut-off ${params.CUT_OFF}"
+                        }
+                    
+                    sh cmd
+                }
             }
         }
 
