@@ -25,5 +25,12 @@ pipeline {
                     sh '$HOME/.local/bin/uv run python src/prepareData.py'
             }
         }
+
+        
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'artifacts/splits.txt', fingerprint: true
+            }
+        }
     }
 }
