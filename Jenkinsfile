@@ -1,7 +1,7 @@
 pipeline {
     agent {
-        dockerfile {
-            filename 'dockerfile'
+        docker {
+            image 'jager72/ium:0.1.5'
             args '-u root'
         }
     }
