@@ -17,22 +17,16 @@ pipeline {
             }
         }
 
-        stage('Install uv') {
-            steps {
-                sh 'curl -Ls https://astral.sh/uv/install.sh | sh'
-            }
-        }
-
         stage('Setup Environment') {
             steps {
-                sh '$HOME/.local/bin/uv sync'
+                sh 'uv sync'
             }
         }
 
         stage('Run Script') {
             steps {
                 script {
-                    def cmd = '$HOME/.local/bin/uv run python src/prepareData.py'
+                    def cmd = 'uv run python src/prepareData.py'
 
                     if (params.CUT_OFF?.trim()) {
                         cmd += " --cut-off ${params.CUT_OFF}"
