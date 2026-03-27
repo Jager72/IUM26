@@ -2,11 +2,10 @@ FROM ubuntu:22.04
 
 WORKDIR /IUM
 
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    python3 \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt update
+RUN apt install -y git python3-pip
+RUN python3 -m pip install uv
+RUN rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --no-cache-dir uv
+RUN git clone https://git.wmi.amu.edu.pl/s481810/IUM26.git .
+RUN uv sync
