@@ -14,7 +14,7 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Run Script') {
+        stage('Run Preparation') {
             steps {
                 script {
                     def cmd = "uv run python src/prepareData.py"
@@ -27,7 +27,21 @@ pipeline {
         }
         stage('Archive Artifact') {
             steps {
-                archiveArtifacts artifacts: 'artifacts/splits.txt', fingerprint: true
+                archiveArtifacts artifacts: 'artifacts/train.csv, artifacts/test.csv, artifacts/eval.csv', fingerprint: true
+            }
+        }
+        stage('Run Train') {
+            steps {
+                script {
+                    sh "uv run python src/train.py"
+                    sh "uv run python src/predict.py"
+                }
+            }
+        }
+        
+        stage('Archive Artifact 2') {
+            steps {
+                archiveArtifacts artifacts: 'artifacts/savePred.txt', fingerprint: true
             }
         }
     }
