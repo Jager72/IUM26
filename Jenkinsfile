@@ -16,6 +16,8 @@ pipeline {
         }
         stage('Run Preparation') {
             steps {
+                sh "mkdir -p artifacts"
+                
                 script {
                     def cmd = "uv run python src/prepareData.py"
                     if (params.CUT_OFF?.trim()) {
@@ -38,7 +40,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Archive Artifact 2') {
             steps {
                 archiveArtifacts artifacts: 'artifacts/savePred.txt', fingerprint: true
