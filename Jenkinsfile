@@ -7,6 +7,7 @@ pipeline {
     }
     parameters {
         string(name: 'CUT_OFF', defaultValue: '', description: 'Limit dataset size')
+        string(name: 'INCLUDE_CONFUSION_MATRIX', defaultValue: '', description: 'Add Confustion Matrix to prediction (Boolean)')
     }
     stages {
         stage('Checkout') {
