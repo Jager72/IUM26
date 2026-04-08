@@ -2,7 +2,12 @@ import torch
 from torch.utils.data import DataLoader
 from common.dataset import StarbucksDataset
 from common.model import StarbucksModel
-from common.func import train, test
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--include-confusion-matrix", type=bool, default=False)
+args = parser.parse_args()
+
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 
@@ -24,14 +29,19 @@ with torch.no_grad():
         all_preds.extend(pred.tolist())
         all_labels.extend(y.tolist())
 
-import collections
-print("Predicted:", collections.Counter(all_preds))
-print("Actual:   ", collections.Counter(all_labels))
-
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
+import pandas as pd
 print(classification_report(all_labels, all_preds, target_names=["not completed", "completed"]))
 
-
+if args.include_confusion_matrix:
+    label_map = {0.0: "not completed", 1.0: "completed"}
+    all_labels_str = [label_map[l] for l in all_labels]
+    all_preds_str  = [label_map[p] for p in all_preds]
+    cm = (confusion_matrix(all_labels_str, all_preds_str, labels=["not completed", "completed"]))
+    df_cm = pd.DataFrame(cm, 
+                     index=["actual: not completed", "actual: completed"],
+                     columns=["pred: not completed", "pred: completed"])
+    print(df_cm.to_string())
 with open("./artifacts/savePred.txt", "w+") as f:
     f.write(str(all_preds))
 
