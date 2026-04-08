@@ -36,7 +36,11 @@ pipeline {
             steps {
                 script {
                     sh "uv run python src/train.py"
-                    sh "uv run python src/predict.py"
+                    def cmd = "uv run python src/predict.py"
+                    if (params.INCLUDE_CONFUSION_MATRIX?.trim()) {
+                        cmd += " --cut-off ${params.CUT_OFF}"
+                    }
+                    sh cmd
                 }
             }
         }
