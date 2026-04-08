@@ -39,7 +39,7 @@ pipeline {
                     sh "uv run python src/train.py"
                     def cmd = "uv run python src/predict.py"
                     if (params.INCLUDE_CONFUSION_MATRIX?.trim()) {
-                        cmd += " --cut-off=${params.CUT_OFF}"
+                        cmd += " --cut-off=${params.INCLUDE_CONFUSION_MATRIX}"
                     }
                     sh cmd
                 }
