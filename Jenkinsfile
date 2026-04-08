@@ -22,7 +22,7 @@ pipeline {
                 script {
                     def cmd = "uv run python src/prepareData.py"
                     if (params.CUT_OFF?.trim()) {
-                        cmd += " --cutt-off=${params.CUT_OFF}"
+                        cmd += " --cut-off=${params.CUT_OFF}"
                     }
                     sh cmd
                 }
