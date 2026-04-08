@@ -22,7 +22,7 @@ pipeline {
                 script {
                     def cmd = "uv run python src/prepareData.py"
                     if (params.CUT_OFF?.trim()) {
-                        cmd += " --cut-off=${params.CUT_OFF}"
+                        cmd += " --include-confusion-matrix=${params.CUT_OFF}"
                     }
                     sh cmd
                 }
