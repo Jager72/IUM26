@@ -48,7 +48,7 @@ pipeline {
 
         stage('Archive Artifact 2') {
             steps {
-                archiveArtifacts artifacts: 'artifacts/savePred.txt, artifacts/starbucks_model.pth', fingerprint: true
+                archiveArtifacts artifacts: 'artifacts/savePred.txt, artifacts/starbucks_model.pth, artifacts/predictionsMetrics.txt', fingerprint: true
             }
         }
     }
