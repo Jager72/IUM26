@@ -1,9 +1,13 @@
 import torch
+import mlflow
 from tqdm import tqdm
 
-def train(dataloader, model, loss_fn, optimizer, device):
+def train(dataloader, model, loss_fn, optimizer, device, epoch):
     model.train()
     loop = tqdm(dataloader, desc="Training")
+
+    total_loss = 0
+    
     for batch, (X,y) in enumerate(loop):
         X, y = X.to(device), y.to(device)
 
@@ -13,9 +17,15 @@ def train(dataloader, model, loss_fn, optimizer, device):
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        
 
-def test(dataloader, model, loss_fn, device, save_pred_dir=None):
+        total_loss += loss.item()
+    
+    avg_loss = total_loss / len(dataloader)
+    mlflow.log_metric("train_loss", avg_loss, step=epoch)
+    
+    return avg_loss   
+
+def test(dataloader, model, loss_fn, device, epoch, save_pred_dir=None):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -35,5 +45,8 @@ def test(dataloader, model, loss_fn, device, save_pred_dir=None):
     test_loss /= num_batches
     correct /= size
     print(f"Eval Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    
+    mlflow.log_metric("test_loss", test_loss, step=epoch)
+    mlflow.log_metric("accuracy", correct, step=epoch)
     return test_loss
 

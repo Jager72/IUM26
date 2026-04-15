@@ -27,23 +27,31 @@ pipeline {
                 }
             }
         }
-        stage('Archive Artifact') {
+
+        stage('Archive Prepared Data') {
             steps {
                 archiveArtifacts artifacts: 'artifacts/train.csv, artifacts/test.csv, artifacts/eval.csv', fingerprint: true
             }
         }
+
         stage('Run Train') {
             steps {
                 script {
                     sh "uv run python src/train.py"
-                    sh "uv run python src/predict.py"
+
+                    def runId = sh(
+                        script: "cat artifacts/run_id.txt",
+                        returnStdout: true
+                    ).trim()
+
+                    sh "uv run python src/predict.py --model-uri runs:/${runId}/model"
                 }
             }
         }
 
-        stage('Archive Artifact 2') {
+        stage('Archive Model And Predictions') {
             steps {
-                archiveArtifacts artifacts: 'artifacts/savePred.txt artifacts/starbucks_model.pth', fingerprint: true
+                archiveArtifacts artifacts: 'artifacts/savePred.txt,artifacts/run_id.txt,mlruns/**', fingerprint: true
             }
         }
     }

@@ -2,20 +2,19 @@ import torch
 from torch.utils.data import DataLoader
 from common.dataset import StarbucksDataset
 from common.model import StarbucksModel
+import mlflow 
 
 import argparse
 parser = argparse.ArgumentParser()
+parser.add_argument("--model-uri", type=str, required=True)
 parser.add_argument("--include-confusion-matrix", type=bool, default=False)
 args = parser.parse_args()
 
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 
-pth = torch.load("./artifacts/starbucks_model.pth")
-model = StarbucksModel(pth["dropout"], pth["input_dim"]).to(device)
-model.load_state_dict(pth["model_state_dict"])
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-optimizer.load_state_dict(pth["optimizer_state_dict"])
+model = mlflow.pytorch.load_model(args.model_uri).to(device)
+model.eval()
 
 eval_ds = StarbucksDataset("./artifacts/eval.csv")
 eval_dl = DataLoader(eval_ds, batch_size=64)
@@ -42,6 +41,7 @@ if args.include_confusion_matrix:
                      index=["actual: not completed", "actual: completed"],
                      columns=["pred: not completed", "pred: completed"])
     print(df_cm.to_string())
+    
 with open("./artifacts/savePred.txt", "w+") as f:
     f.write(str(all_preds))
 
