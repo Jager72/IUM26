@@ -7,6 +7,7 @@ pipeline {
     }
     parameters {
         string(name: 'CUT_OFF', defaultValue: '', description: 'Limit dataset size')
+        string(name: 'INCLUDE_CONFUSION_MATRIX', defaultValue: '', description: 'Add Confustion Matrix to prediction (Boolean)')
     }
     stages {
         stage('Checkout') {
@@ -21,7 +22,7 @@ pipeline {
                 script {
                     def cmd = "uv run python src/prepareData.py"
                     if (params.CUT_OFF?.trim()) {
-                        cmd += " --cut-off ${params.CUT_OFF}"
+                        cmd += " --cut-off=${params.CUT_OFF}"
                     }
                     sh cmd
                 }
@@ -44,14 +45,20 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    sh "uv run python src/predict.py --model-uri runs:/${runId}/model"
+                    def cmd = "uv run python src/predict.py"
+                    if (params.INCLUDE_CONFUSION_MATRIX?.trim()) {
+                        cmd += " --include-confusion-matrix=${params.INCLUDE_CONFUSION_MATRIX}"
+                    }
+
+                    cmd += " --model-uri runs:/${runId}/model"
+                    sh cmd
                 }
             }
         }
 
         stage('Archive Model And Predictions') {
             steps {
-                archiveArtifacts artifacts: 'artifacts/savePred.txt,artifacts/run_id.txt,mlruns/**', fingerprint: true
+                archiveArtifacts artifacts: 'artifacts/savePred.txt, artifacts/starbucks_model.pth, artifacts/predictionsMetrics.txt,artifacts/run_id.txt,mlruns/**', fingerprint: true
             }
         }
     }
