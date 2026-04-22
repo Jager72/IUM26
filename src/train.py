@@ -113,19 +113,33 @@ with mlflow.start_run() as run:
         input_example=input_example,
         extra_files=[model_card_path],
     )
-    latest_versions = client.search_model_versions(f"name='{registered_model_name}'")
-    latest_version = max(int(mv.version) for mv in latest_versions)
+
+    model_versions = client.search_model_versions(f"name='{registered_model_name}'")
+
+    current_version = None
+    for mv in model_versions:
+        if mv.run_id == run.info.run_id:
+            current_version = mv.version
+            break
+
+    if current_version is None:
+        raise RuntimeError("Could not find registered model version for this run.")
 
     client.update_model_version(
         name=registered_model_name,
-        version=latest_version,
+        version=current_version,
         description=model_card_content,
     )
+
+    with open("./artifacts/model_version.txt", "w", encoding="utf-8") as f:
+        f.write(str(current_version))
+
     with open("./artifacts/run_id.txt", "w", encoding="utf-8") as f:
         f.write(run.info.run_id)
 
     print("Model URI:", model_info.model_uri)
     print("Run ID:", run.info.run_id)
     print("Registered model:", registered_model_name)
+    print("Registered version:", current_version)
 
 print("Done!")
