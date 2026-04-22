@@ -38,6 +38,14 @@ pipeline {
         stage('Run Train') {
             steps {
                 script {
+
+                    sh "mlflow server \
+                        --backend-store-uri sqlite:///mlflow.db \
+                        --default-artifact-root ./mlruns \
+                        --host 0.0.0.0 \
+                        --port 8080 \
+                        > mlflow.log 2>&1 &"
+
                     sh "uv run python src/train.py"
 
                     def runId = sh(
