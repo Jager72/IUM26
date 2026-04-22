@@ -39,17 +39,40 @@ pipeline {
             steps {
                 script {
 
-                    sh "mlflow server \
+                    sh '''
+                        nohup uv run mlflow server \
                         --backend-store-uri sqlite:///mlflow.db \
                         --default-artifact-root ./mlruns \
                         --host 0.0.0.0 \
                         --port 8080 \
-                        > mlflow.log 2>&1 &"
+                        > mlflow.log 2>&1 &
+                    '''
+
+                    sh '''
+uv run python - <<'PY'
+import time
+import urllib.request
+import urllib.error
+
+url = "http://127.0.0.1:8080/api/2.0/mlflow/experiments/list?view_type=ALL"
+
+for i in range(90):
+    try:
+        with urllib.request.urlopen(url, timeout=2) as r:
+            print("MLflow is ready")
+            break
+    except Exception as e:
+        print(f"Waiting for MLflow... ({i+1}/30) {e}")
+        time.sleep(1)
+else:
+    raise SystemExit("MLflow server did not become ready in time")
+PY
+                    '''
 
                     sh "uv run python src/train.py"
 
-                    def runId = sh(
-                        script: "cat artifacts/run_id.txt",
+                    def modelVersion = sh(
+                        script: "cat artifacts/model_version.txt",
                         returnStdout: true
                     ).trim()
 
@@ -58,7 +81,7 @@ pipeline {
                         cmd += " --include-confusion-matrix=${params.INCLUDE_CONFUSION_MATRIX}"
                     }
 
-                    cmd += " --model-uri runs:/${runId}/model"
+                    cmd += " --model-uri models:/starbucks-sex-classifier/${modelVersion}"
                     sh cmd
                 }
             }
