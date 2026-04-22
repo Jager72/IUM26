@@ -1,17 +1,28 @@
+import argparse
+from pathlib import Path
+
 import torch
 from torch.utils.data import DataLoader
-from common.dataset import StarbucksDataset
-from common.model import StarbucksModel
-import mlflow 
+from sklearn.metrics import classification_report, confusion_matrix
+import pandas as pd
 
-import argparse
+import mlflow
+import mlflow.pytorch
+
+from common.dataset import StarbucksDataset
+
+mlflow.set_tracking_uri("http://127.0.0.1:8080")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-uri", type=str, required=True)
-parser.add_argument("--include-confusion-matrix", type=bool, default=False)
+parser.add_argument("--include-confusion-matrix", action="store_true")
 args = parser.parse_args()
 
-
-device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+device = (
+    torch.accelerator.current_accelerator().type
+    if torch.accelerator.is_available()
+    else "cpu"
+)
 
 model = mlflow.pytorch.load_model(args.model_uri).to(device)
 model.eval()
@@ -19,28 +30,27 @@ model.eval()
 eval_ds = StarbucksDataset("./artifacts/eval.csv")
 eval_dl = DataLoader(eval_ds, batch_size=64)
 
-
-model.eval()
 all_preds, all_labels = [], []
+
 with torch.no_grad():
     for X, y in eval_dl:
-        pred = (model(X.to(device)).squeeze() > 0).float().cpu()
-        all_preds.extend(pred.tolist())
-        all_labels.extend(y.tolist())
+        logits = model(X.to(device)).squeeze()
+        preds = (logits > 0).float().cpu()
 
-from sklearn.metrics import classification_report, confusion_matrix
-import pandas as pd
-from pathlib import Path
+        all_preds.extend(preds.tolist())
+        all_labels.extend(y.tolist())
 
 output_path = Path("artifacts/predictionsMetrics.txt")
 output_path.parent.mkdir(parents=True, exist_ok=True)
 
 with output_path.open("w", encoding="utf-8") as f:
-    f.write(classification_report(
-        all_labels,
-        all_preds,
-        target_names=["not completed", "completed"]
-    ))
+    f.write(
+        classification_report(
+            all_labels,
+            all_preds,
+            target_names=["not completed", "completed"],
+        )
+    )
     f.write("\n")
 
     if args.include_confusion_matrix:
@@ -51,20 +61,17 @@ with output_path.open("w", encoding="utf-8") as f:
         cm = confusion_matrix(
             all_labels_str,
             all_preds_str,
-            labels=["not completed", "completed"]
+            labels=["not completed", "completed"],
         )
 
         df_cm = pd.DataFrame(
             cm,
             index=["actual: not completed", "actual: completed"],
-            columns=["pred: not completed", "pred: completed"]
+            columns=["pred: not completed", "pred: completed"],
         )
 
         f.write(df_cm.to_string())
         f.write("\n")
 
-
-
-with open("./artifacts/savePred.txt", "w+") as f:
+with open("./artifacts/savePred.txt", "w", encoding="utf-8") as f:
     f.write(str(all_preds))
-

@@ -77,10 +77,9 @@ PY
                     ).trim()
 
                     def cmd = "uv run python src/predict.py"
-                    if (params.INCLUDE_CONFUSION_MATRIX?.trim()) {
-                        cmd += " --include-confusion-matrix=${params.INCLUDE_CONFUSION_MATRIX}"
+                    if (params.INCLUDE_CONFUSION_MATRIX?.toBoolean()) {
+                        cmd += " --include-confusion-matrix"
                     }
-
                     cmd += " --model-uri models:/starbucks-sex-classifier/${modelVersion}"
                     sh cmd
                 }
