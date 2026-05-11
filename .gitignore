@@ -246,3 +246,5 @@ Data/
 artifacts/
 mlruns/
 mlflow.db
+/mlruns
+/artifacts
