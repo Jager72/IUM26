@@ -1,0 +1,187 @@
+name: Train and Evaluate Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      cut_off:
+        description: "Limit dataset size"
+        required: false
+        default: ""
+      include_confusion_matrix:
+        description: "Add confusion matrix to prediction"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    container:
+      image: jager72/ium:0.1.5
+      options: --user root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Run data preparation
+        run: |
+          CMD="uv run python src/prepareData.py"
+
+          if [ -n "${{ github.event.inputs.cut_off }}" ]; then
+            CMD="$CMD --cut-off=${{ github.event.inputs.cut_off }}"
+          fi
+
+          echo "Running: $CMD"
+          eval $CMD
+
+      - name: Upload prepared data
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepared-data
+          path: |
+            artifacts/train.csv
+            artifacts/test.csv
+            artifacts/eval.csv
+
+  train:
+    runs-on: ubuntu-latest
+    needs: prepare
+    container:
+      image: jager72/ium:0.1.5
+      options: --user root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download prepared data
+        uses: actions/download-artifact@v4
+        with:
+          name: prepared-data
+          path: artifacts
+
+      - name: Start MLflow server
+        run: |
+          nohup uv run mlflow server \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root ./mlruns \
+            --host 0.0.0.0 \
+            --port 8080 \
+            > mlflow.log 2>&1 &
+
+      - name: Wait for MLflow
+        run: |
+          uv run python - <<'PY'
+          import time
+          import urllib.request
+
+          url = "http://127.0.0.1:8080/api/2.0/mlflow/experiments/list?view_type=ALL"
+
+          for i in range(90):
+              try:
+                  with urllib.request.urlopen(url, timeout=2):
+                      print("MLflow is ready")
+                      break
+              except Exception as e:
+                  print(f"Waiting for MLflow... ({i+1}/90) {e}")
+                  time.sleep(1)
+          else:
+              raise SystemExit("MLflow server did not become ready in time")
+          PY
+
+      - name: Train model
+        run: uv run python src/train.py
+
+      - name: Upload trained model and MLflow data
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: |
+            artifacts/starbucks_model.pth
+            artifacts/model_version.txt
+            artifacts/run_id.txt
+            mlruns/**
+            mlflow.db
+            mlflow.log
+
+  evaluate:
+    runs-on: ubuntu-latest
+    needs: train
+    container:
+      image: jager72/ium:0.1.5
+      options: --user root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download prepared data
+        uses: actions/download-artifact@v4
+        with:
+          name: prepared-data
+          path: artifacts
+
+      - name: Download trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+
+      - name: Start MLflow server
+        run: |
+          nohup uv run mlflow server \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root ./mlruns \
+            --host 0.0.0.0 \
+            --port 8080 \
+            > mlflow.log 2>&1 &
+
+      - name: Wait for MLflow
+        run: |
+          uv run python - <<'PY'
+          import time
+          import urllib.request
+
+          url = "http://127.0.0.1:8080/api/2.0/mlflow/experiments/list?view_type=ALL"
+
+          for i in range(90):
+              try:
+                  with urllib.request.urlopen(url, timeout=2):
+                      print("MLflow is ready")
+                      break
+              except Exception as e:
+                  print(f"Waiting for MLflow... ({i+1}/90) {e}")
+                  time.sleep(1)
+          else:
+              raise SystemExit("MLflow server did not become ready in time")
+          PY
+
+      - name: Evaluate model
+        run: |
+          MODEL_VERSION=$(cat artifacts/model_version.txt)
+
+          CMD="uv run python src/predict.py --model-uri models:/starbucks-sex-classifier/${MODEL_VERSION}"
+
+          if [ "${{ github.event.inputs.include_confusion_matrix }}" = "true" ]; then
+            CMD="$CMD --include-confusion-matrix"
+          fi
+
+          echo "Running: $CMD"
+          eval $CMD
+
+      - name: Upload predictions and metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: predictions-and-metrics
+          path: |
+            artifacts/savePred.txt
+            artifacts/predictionsMetrics.txt
+            artifacts/run_id.txt
+            mlruns/**
+            mlflow.log
